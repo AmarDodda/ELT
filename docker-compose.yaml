@@ -1,4 +1,4 @@
-version: '3'
+version: '3.9' # Use the latest stable version for improved compatibility
 
 services:
   source_postgres:
@@ -27,14 +27,19 @@ services:
 
   elt_script:
     build:
-      context: ./elt/elt_script # Directory containing the Dockerfile and elt_script.py
-      dockerfile: Dockerfile # Name of the Dockerfile
+      context: ./elt
+      dockerfile: Dockerfile
     command: ['python', 'elt_script.py']
     networks:
       - elt_network
     depends_on:
-      - source_postgres
-      - destination_postgres
+      source_postgres:
+        condition: service_healthy
+      destination_postgres:
+        condition: service_healthy
+    environment:
+      SOURCE_DB_URL: postgres://postgres:secret@source_postgres:5432/source_db
+      DESTINATION_DB_URL: postgres://postgres:secret@destination_postgres:5432/destination_db
 
 networks:
   elt_network:
