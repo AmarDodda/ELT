@@ -154,3 +154,4 @@ INSERT INTO film_actors (film_id, actor_id) VALUES
 (18, 18),
 (19, 19),
 (20, 20);
+
