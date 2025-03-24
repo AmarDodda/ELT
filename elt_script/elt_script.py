@@ -1,5 +1,6 @@
 import subprocess
 import time
+import os
 
 
 def wait_for_postgres(host, max_retries=5, delay_seconds=5):
@@ -26,6 +27,9 @@ def wait_for_postgres(host, max_retries=5, delay_seconds=5):
 if not wait_for_postgres(host="source_postgres"):
     exit(1)
 
+if not wait_for_postgres(host="destination_postgres"):
+    exit(1)
+
 print("Starting ELT script...")
 
 # Configuration for the source PostgreSQL database
@@ -33,7 +37,6 @@ source_config = {
     'dbname': 'source_db',
     'user': 'postgres',
     'password': 'secret',
-    # Use the service name from docker-compose as the hostname
     'host': 'source_postgres'
 }
 
@@ -42,7 +45,6 @@ destination_config = {
     'dbname': 'destination_db',
     'user': 'postgres',
     'password': 'secret',
-    # Use the service name from docker-compose as the hostname
     'host': 'destination_postgres'
 }
 
@@ -59,8 +61,12 @@ dump_command = [
 # Set the PGPASSWORD environment variable to avoid password prompt
 subprocess_env = dict(PGPASSWORD=source_config['password'])
 
-# Execute the dump command
-subprocess.run(dump_command, env=subprocess_env, check=True)
+try:
+    # Execute the dump command
+    subprocess.run(dump_command, env=subprocess_env, check=True)
+except subprocess.CalledProcessError as e:
+    print(f"Error during pg_dump: {e}")
+    exit(1)
 
 # Use psql to load the dumped SQL file into the destination database
 load_command = [
@@ -74,7 +80,14 @@ load_command = [
 # Set the PGPASSWORD environment variable for the destination database
 subprocess_env = dict(PGPASSWORD=destination_config['password'])
 
-# Execute the load command
-subprocess.run(load_command, env=subprocess_env, check=True)
+try:
+    # Execute the load command
+    subprocess.run(load_command, env=subprocess_env, check=True)
+except subprocess.CalledProcessError as e:
+    print(f"Error during psql load: {e}")
+    exit(1)
+
+# Clean up the dump file
+os.remove('data_dump.sql')
 
 print("Ending ELT script...")

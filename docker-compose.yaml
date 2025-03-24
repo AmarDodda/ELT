@@ -1,4 +1,4 @@
-version: '3.9' # Use the latest stable version for improved compatibility
+version: '3.9'
 
 services:
   source_postgres:
@@ -13,6 +13,12 @@ services:
       POSTGRES_PASSWORD: secret
     volumes:
       - ./source_db_init/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d source_db"]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 10s
 
   destination_postgres:
     image: postgres:15
@@ -24,6 +30,12 @@ services:
       POSTGRES_DB: destination_db
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: secret
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d destination_db"]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 10s
 
   elt_script:
     build:
